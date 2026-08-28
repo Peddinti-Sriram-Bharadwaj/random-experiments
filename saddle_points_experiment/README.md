@@ -9,9 +9,17 @@ This experiment reproduces the theoretical and empirical findings from Chapter 8
 For a random error function of dimensionality $D$, if we assume the signs of the eigenvalues of the Hessian at a critical point are independent and each has a 50% probability of being positive or negative:
 - Probability of a local minimum (all positive eigenvalues): $P(\text{minimum}) = (1/2)^D$
 - Probability of a local maximum (all negative eigenvalues): $P(\text{maximum}) = (1/2)^D$
-- Probability of a saddle point (both positive and negative eigenvalues): $P(\text{saddle}) = 1 - 2^{1-D}$
+- Probability of a saddle point (both positive and negative eigenvalues): $P(\text{saddle}) = 1 - 2(1/2)^D = 1 - 2^{1-D}$
 
 As $D$ grows, $P(\text{saddle}) \to 1$ exponentially. For example, at $D=10$, $P(\text{saddle}) \approx 99.8\%$.
+
+### The Coin Flip Analogy
+To build intuition, think of each dimension in the space as an independent coin flip. At a critical point, the landscape can curve upwards (Heads, representing a positive eigenvalue) or downwards (Tails, representing a negative eigenvalue) along each dimension.
+- A **local minimum** requires all dimensions to curve upwards—equivalent to flipping a coin $D$ times and getting **all Heads**. The probability is $(1/2)^D$.
+- A **local maximum** requires all dimensions to curve downwards—equivalent to getting **all Tails**. The probability is $(1/2)^D$.
+- A **saddle point** is any configuration with at least one upward and one downward curvature—equivalent to getting **a mix of Heads and Tails**. The probability is $1 - 2(1/2)^D$.
+
+For a 100-dimensional space ($D=100$), finding a local minimum is as likely as flipping a coin 100 times and getting all Heads, which has a probability of $1 / 2^{100} \approx 7.9 \times 10^{-31}$. Thus, virtually every critical point in high-dimensional spaces is guaranteed to be a saddle point.
 
 ---
 
@@ -21,7 +29,7 @@ As $D$ grows, $P(\text{saddle}) \to 1$ exponentially. For example, at $D=10$, $P
    $$f(x) = \sum_{i=1}^M v_i \tanh(w_i^T x + b_i)$$
    where $w_i \in \mathbb{R}^D \sim \mathcal{N}(0, 1/D)$, $b_i \sim \mathcal{N}(0, 1)$, and $v_i \sim \mathcal{N}(0, 1)$ are fixed.
 2. **Optimization**: We start from multiple random initializations $x_0 \sim \mathcal{N}(0, \sigma^2 I)$ and minimize the squared gradient norm $\frac{1}{2} \|\nabla f(x)\|_2^2$ using the L-BFGS optimizer (with Strong-Wolfe line search) to find points where $\nabla f(x) \approx 0$.
-3. **Characterization**: At each converged critical point ($\|\nabla f(x)\|_2 < 1.5 \times 10^{-3}$), we compute the Hessian matrix $H = \nabla^2 f(x)$ and its eigenvalues. The **index** of the critical point is the fraction of negative eigenvalues:
+3. **Characterization**: At each converged critical point ($\lVert \nabla f(x) \rVert_2 < 1.5 \times 10^{-3}$), we compute the Hessian matrix $H = \nabla^2 f(x)$ and its eigenvalues. The **index** of the critical point is the fraction of negative eigenvalues:
    $$\alpha = \frac{\sum_{i=1}^D \mathbb{I}(\lambda_i < 0)}{D}$$
 
 ---
