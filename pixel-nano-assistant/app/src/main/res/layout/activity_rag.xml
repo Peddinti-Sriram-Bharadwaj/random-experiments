@@ -73,6 +73,21 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
+            android:text="Refined context (System 2 Attention-filtered)"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/refinedContextText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="12sp"
+            android:alpha="0.8" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
             android:text="Answer (Gemini Nano)"
             android:textStyle="bold" />
 

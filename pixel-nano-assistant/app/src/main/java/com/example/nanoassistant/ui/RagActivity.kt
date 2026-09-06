@@ -110,6 +110,7 @@ class RagActivity : AppCompatActivity() {
         binding.askButton.isEnabled = false
         binding.rewrittenQueryText.text = ""
         binding.retrievedChunks.text = "Retrieving…"
+        binding.refinedContextText.text = "Filtering (System 2 Attention)…"
         binding.answerText.text = "Thinking…"
 
         lifecycleScope.launch {
@@ -122,6 +123,7 @@ class RagActivity : AppCompatActivity() {
                 result.rerankedChunks.mapIndexed { i, c -> "[$i] (%.2f) %s".format(c.score, c.text) }
                     .joinToString("\n\n")
             }
+            binding.refinedContextText.text = result.refinedContext.ifBlank { "(empty)" }
             binding.answerText.text = result.answer
             binding.askButton.isEnabled = true
         }

@@ -10,3 +10,9 @@ app/build/
 
 # Gecko embedder model weights — downloaded at runtime by the app itself, not committed here
 /models/
+
+# Local retrieval test fixtures derived from third-party sources — for local testing only,
+# not ours to redistribute. pixel10.txt (our own content) stays tracked.
+app/src/main/assets/rag_docs/vulkan.txt
+app/src/main/assets/rag_docs/bm25.txt
+app/src/main/assets/rag_docs/rag_technique.txt

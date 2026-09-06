@@ -10,6 +10,7 @@ import com.example.nanoassistant.rag.pipeline.KeywordRetriever
 import com.example.nanoassistant.rag.pipeline.LexicalOverlapReranker
 import com.example.nanoassistant.rag.pipeline.NanoAnswerGenerator
 import com.example.nanoassistant.rag.pipeline.NanoQueryRewriter
+import com.example.nanoassistant.rag.pipeline.S2AContextRefiner
 import com.example.nanoassistant.rag.store.Bm25KeywordIndex
 import com.example.nanoassistant.rag.store.InMemoryVectorRepository
 import com.google.mlkit.genai.prompt.Generation
@@ -40,7 +41,7 @@ object RagPipelineFactory {
             queryRewriter = NanoQueryRewriter(nanoModel),
             retriever = retriever,
             reranker = LexicalOverlapReranker(),
-            contextRefiner = ConcatenatingContextRefiner(),
+            contextRefiner = S2AContextRefiner(nanoModel, fallback = ConcatenatingContextRefiner()),
             documentIndexer = ChunkingDocumentIndexer(ParagraphTextChunker(), embeddingService, vectorRepository, keywordIndex),
             answerGenerator = NanoAnswerGenerator(nanoModel)
         )

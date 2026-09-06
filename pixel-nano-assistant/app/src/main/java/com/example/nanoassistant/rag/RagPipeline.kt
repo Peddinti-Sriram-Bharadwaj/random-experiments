@@ -33,7 +33,7 @@ class RagPipeline(
         val rewrittenQuery = queryRewriter.rewrite(query)
         val retrieved = retriever.retrieve(rewrittenQuery, topK)
         val reranked = reranker.rerank(rewrittenQuery, retrieved)
-        val context = contextRefiner.refine(reranked)
+        val context = contextRefiner.refine(rewrittenQuery, reranked)
         val answer = answerGenerator.generate(rewrittenQuery, context)
 
         return AskResult(
