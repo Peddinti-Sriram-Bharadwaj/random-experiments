@@ -7,3 +7,6 @@
 /captures
 app/build/
 *.apk
+
+# Gecko embedder model weights — downloaded at runtime by the app itself, not committed here
+/models/

@@ -47,4 +47,10 @@ dependencies {
     // STT uses Android's standard SpeechRecognizer (on-device mode) rather than ML Kit's
     // GenAI Speech Recognition API — that one is alpha with an unstable/undocumented result
     // shape; this comparison app cares about LLM generation speed, not STT engine choice.
+
+    // AI Edge RAG SDK — Gecko embedder + vector store for retrieval. Generation still goes
+    // through NanoLlmEngine (Gemini Nano/AICore) above, not this SDK's own MediaPipe LLM path.
+    implementation("com.google.ai.edge.localagents:localagents-rag:0.1.0")
+    implementation("com.google.mediapipe:tasks-genai:0.10.22")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.9.0")
 }
