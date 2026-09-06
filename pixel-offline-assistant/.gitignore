@@ -1,0 +1,18 @@
+*.iml
+.gradle/
+/local.properties
+.idea/
+.DS_Store
+/build
+/captures
+app/build/
+app/.cxx/
+*.apk
+
+# Model weights — multi-GB, fetched separately, never belong in git
+/models/
+
+# Vendored upstream C++ projects — re-fetch via the commands in README.md rather
+# than committing full third-party source trees into this repo
+/app/src/main/cpp/llama.cpp/
+/app/src/main/cpp/whisper.cpp/
