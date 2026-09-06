@@ -53,4 +53,8 @@ dependencies {
     implementation("com.google.ai.edge.localagents:localagents-rag:0.1.0")
     implementation("com.google.mediapipe:tasks-genai:0.10.22")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.9.0")
+
+    // PDF text extraction for messy/scraped real-world documents (no native code needed —
+    // this is a pure-Java port of Apache PDFBox).
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 }

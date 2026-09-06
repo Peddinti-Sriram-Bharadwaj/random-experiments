@@ -8,6 +8,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.nanoassistant.databinding.ActivityRagBinding
 import com.example.nanoassistant.rag.RagPipeline
 import com.example.nanoassistant.rag.RagPipelineFactory
+import com.example.nanoassistant.rag.ingest.PdfTextExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,15 +56,24 @@ class RagActivity : AppCompatActivity() {
                 pipeline = RagPipelineFactory.create(geckoModel.absolutePath, tokenizer.absolutePath)
 
                 val docNames = assets.list("rag_docs")?.toList().orEmpty()
-                var chunkCount = 0
+                var totalChunks = 0
                 for (name in docNames) {
-                    val text = assets.open("rag_docs/$name").bufferedReader().use { it.readText() }
-                    pipeline.indexDocument(text, sourceId = name) { indexed ->
-                        chunkCount = indexed
-                        binding.indexStatus.text = "Indexing… $name ($chunkCount chunks so far)"
+                    binding.indexStatus.text = "Extracting… $name"
+                    val text = withContext(Dispatchers.Default) {
+                        if (name.endsWith(".pdf", ignoreCase = true)) {
+                            assets.open("rag_docs/$name").use { PdfTextExtractor.extractText(this@RagActivity, it) }
+                        } else {
+                            assets.open("rag_docs/$name").bufferedReader().use { it.readText() }
+                        }
                     }
+                    var docChunks = 0
+                    pipeline.indexDocument(text, sourceId = name) { indexed ->
+                        docChunks = indexed
+                        binding.indexStatus.text = "Indexing… $name (${totalChunks + docChunks} chunks so far)"
+                    }
+                    totalChunks += docChunks
                 }
-                binding.indexStatus.text = "Indexed $chunkCount chunks from ${docNames.size} bundled doc(s)."
+                binding.indexStatus.text = "Indexed $totalChunks chunks from ${docNames.size} bundled doc(s)."
                 binding.askButton.isEnabled = true
             } catch (e: Exception) {
                 binding.indexStatus.text = "Setup failed: ${e.message} — tap RAG button again to retry."
