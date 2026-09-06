@@ -6,8 +6,8 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.nanoassistant.databinding.ActivityRagBinding
-import com.example.nanoassistant.rag.RagStore
-import com.google.mlkit.genai.prompt.Generation
+import com.example.nanoassistant.rag.RagPipeline
+import com.example.nanoassistant.rag.RagPipelineFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -17,8 +17,7 @@ import java.net.URL
 class RagActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityRagBinding
-    private lateinit var ragStore: RagStore
-    private val nano = Generation.getClient()
+    private lateinit var pipeline: RagPipeline
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,16 +52,14 @@ class RagActivity : AppCompatActivity() {
                 )
 
                 binding.indexStatus.text = "Loading embedder…"
-                ragStore = RagStore(geckoModel.absolutePath, tokenizer.absolutePath)
+                pipeline = RagPipelineFactory.create(geckoModel.absolutePath, tokenizer.absolutePath)
 
                 val docNames = assets.list("rag_docs")?.toList().orEmpty()
                 var chunkCount = 0
                 for (name in docNames) {
                     val text = assets.open("rag_docs/$name").bufferedReader().use { it.readText() }
-                    val chunks = ragStore.chunk(text)
-                    for (chunk in chunks) {
-                        ragStore.indexChunk(chunk)
-                        chunkCount++
+                    pipeline.indexDocument(text) { indexed ->
+                        chunkCount = indexed
                         binding.indexStatus.text = "Indexing… $name ($chunkCount chunks so far)"
                     }
                 }
@@ -111,28 +108,21 @@ class RagActivity : AppCompatActivity() {
 
     private fun askQuestion(query: String) {
         binding.askButton.isEnabled = false
+        binding.rewrittenQueryText.text = ""
         binding.retrievedChunks.text = "Retrieving…"
         binding.answerText.text = "Thinking…"
 
         lifecycleScope.launch {
-            val chunks = ragStore.retrieve(query, topK = 3)
-            binding.retrievedChunks.text = if (chunks.isEmpty()) {
+            val result = pipeline.ask(query, topK = 3)
+
+            binding.rewrittenQueryText.text = result.rewrittenQuery
+            binding.retrievedChunks.text = if (result.rerankedChunks.isEmpty()) {
                 "(nothing retrieved)"
             } else {
-                chunks.mapIndexed { i, c -> "[$i] $c" }.joinToString("\n\n")
+                result.rerankedChunks.mapIndexed { i, c -> "[$i] (%.2f) %s".format(c.score, c.text) }
+                    .joinToString("\n\n")
             }
-
-            val context = chunks.joinToString("\n\n")
-            val prompt = """
-                Context:
-                $context
-
-                Question: $query
-                Answer using only the context above. If the context doesn't contain the answer, say so.
-            """.trimIndent()
-
-            val response = nano.generateContent(prompt)
-            binding.answerText.text = response.candidates.firstOrNull()?.text.orEmpty()
+            binding.answerText.text = result.answer
             binding.askButton.isEnabled = true
         }
     }

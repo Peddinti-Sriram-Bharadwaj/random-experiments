@@ -6,4 +6,4 @@ Gemini Nano on Pixel 10 is version 3, distributed and updated through the AICore
 
 The Pixel 10 Pro has a 6.3 inch display and ships with at least 12GB of RAM, which is a listed requirement for running Gemini Nano's more advanced on-device features.
 
-On-device inference frameworks like llama.cpp can run on Tensor G5's CPU and, with extra configuration, its GPU via Vulkan — but as of late 2025/2026 the Vulkan backend has known correctness bugs on Mali/Immortalis-class mobile GPUs when running quantized models, particularly around cooperative-matrix and integer-dot-product extensions.
+Tensor G5 replaced the Mali/Immortalis GPUs used in Tensor G1-G4 with an Imagination Technologies PowerVR DXT-48-1536 GPU. On-device inference frameworks like llama.cpp can run on Tensor G5's CPU and, with extra configuration, its GPU via Vulkan — but as of late 2025/2026 the Vulkan backend has known correctness bugs on this PowerVR GPU when running quantized models, particularly around cooperative-matrix and integer-dot-product extensions.

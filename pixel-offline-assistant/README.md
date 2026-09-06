@@ -29,7 +29,7 @@ Requires the Vulkan-Hpp/SPIRV-Headers Homebrew packages on macOS to build the (c
 
 ## Known issues
 
-- GPU (Vulkan) path for whisper/llama.cpp produces garbage output on this device's Mali/Immortalis GPU when quantized-model cooperative-matrix extensions are enabled — worked around by disabling `GGML_VK_DISABLE_COOPMAT`/`COOPMAT2`/`INTEGER_DOT_PRODUCT` at runtime (see `llama_jni.cpp`), which fixed llama.cpp but whisper.cpp is still forced to CPU.
+- GPU (Vulkan) path for whisper/llama.cpp produces garbage output on this device's GPU — Tensor G5's Imagination PowerVR DXT-48-1536 (not Mali; Tensor G5 dropped Mali/Immortalis after Tensor G1-G4) — when quantized-model cooperative-matrix extensions are enabled. Worked around by disabling `GGML_VK_DISABLE_COOPMAT`/`COOPMAT2`/`INTEGER_DOT_PRODUCT` at runtime (see `llama_jni.cpp`), which fixed llama.cpp but whisper.cpp is still forced to CPU. See also [ggml-org/llama.cpp#28214](https://github.com/ggml-org/llama.cpp/issues/28214) — a related but distinct Imagination PowerVR (Tensor G6, different sub-series) Vulkan crash, suggesting a broader pattern with this GPU vendor's driver on ggml-vulkan.
 - CPU-only inference is slow (~5-6s/token for the LLM in the worst case observed).
 
 See `pixel-nano-assistant/` for a comparison app using Gemini Nano/AICore instead — dramatically faster on the same hardware since it uses a dedicated accelerator rather than raw CPU/GPU compute.
