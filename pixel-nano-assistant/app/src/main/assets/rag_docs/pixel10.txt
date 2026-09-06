@@ -1,0 +1,9 @@
+The Pixel 10 Pro is powered by the Google Tensor G5 chip, Google's first chip manufactured by TSMC rather than Samsung.
+
+Tensor G5 includes a dedicated TPU (Tensor Processing Unit) block that AICore uses to run Gemini Nano on-device, separate from the phone's CPU and GPU.
+
+Gemini Nano on Pixel 10 is version 3, distributed and updated through the AICore system app rather than bundled inside individual apps.
+
+The Pixel 10 Pro has a 6.3 inch display and ships with at least 12GB of RAM, which is a listed requirement for running Gemini Nano's more advanced on-device features.
+
+Tensor G5 replaced the Mali/Immortalis GPUs used in Tensor G1-G4 with an Imagination Technologies PowerVR DXT-48-1536 GPU. On-device inference frameworks like llama.cpp can run on Tensor G5's CPU and, with extra configuration, its GPU via Vulkan — but as of late 2025/2026 the Vulkan backend has known correctness bugs on this PowerVR GPU when running quantized models, particularly around cooperative-matrix and integer-dot-product extensions.

@@ -1,6 +1,9 @@
 package com.example.assistant.ui
 
+import android.content.Context
+import android.os.BatteryManager
 import android.os.Bundle
+import android.os.Process
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -48,40 +51,71 @@ class BenchmarkActivity : AppCompatActivity() {
         }
     }
 
+    private fun batteryManager() = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+
     private fun runBenchmark(prompt: String) {
         binding.runButton.isEnabled = false
         binding.llamaResult.text = "Running…"
         binding.nanoResult.text = "Running…"
         binding.llamaTiming.text = ""
         binding.nanoTiming.text = ""
+        binding.tableLlamaWall.text = "—"
+        binding.tableLlamaCpu.text = "—"
+        binding.tableLlamaCores.text = "—"
+        binding.tableNanoWall.text = "—"
+
+        val bm = batteryManager()
+        val pctBefore = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        val chargeBefore = bm.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
+        binding.batteryPctBefore.text = "$pctBefore%"
+        binding.chargeCounterBefore.text = "${chargeBefore / 1000} mAh"
+        binding.batteryPctAfter.text = "—"
+        binding.chargeCounterAfter.text = "—"
+        binding.batteryNote.text = if (bm.isCharging()) {
+            "Device is charging — charge-counter deltas reflect charging input minus consumption, not pure draw. Unplug for a clean reading."
+        } else ""
 
         val chatPrompt = "<|im_start|>user\n$prompt\n<|im_end|>\n<|im_start|>assistant\n"
 
         var llamaDone = false
         var nanoDone = false
-        fun maybeReenableButton() {
-            if (llamaDone && nanoDone) binding.runButton.isEnabled = true
+        fun maybeFinish() {
+            if (llamaDone && nanoDone) {
+                binding.runButton.isEnabled = true
+                binding.batteryPctAfter.text = "${bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)}%"
+                binding.chargeCounterAfter.text =
+                    "${bm.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER) / 1000} mAh"
+            }
         }
 
         // Each engine updates the UI independently as soon as IT finishes — Nano typically
         // finishes in seconds while llama.cpp is still generating, and the UI should show that.
         lifecycleScope.launch {
-            val start = System.currentTimeMillis()
+            val wallStart = System.currentTimeMillis()
+            val cpuStart = Process.getElapsedCpuTime()
             val sb = StringBuilder()
             llama.generate(chatPrompt).collect { sb.append(it) }
+            val wallMs = System.currentTimeMillis() - wallStart
+            val cpuMs = Process.getElapsedCpuTime() - cpuStart
+
             binding.llamaResult.text = sb.toString()
-            binding.llamaTiming.text = "${System.currentTimeMillis() - start} ms"
+            binding.llamaTiming.text = "$wallMs ms"
+            binding.tableLlamaWall.text = "$wallMs ms"
+            binding.tableLlamaCpu.text = "$cpuMs ms"
+            binding.tableLlamaCores.text = "%.2f".format(cpuMs.toDouble() / wallMs)
             llamaDone = true
-            maybeReenableButton()
+            maybeFinish()
         }
         lifecycleScope.launch {
             val start = System.currentTimeMillis()
             val sb = StringBuilder()
             nano.generate(prompt).collect { sb.append(it) }
+            val wallMs = System.currentTimeMillis() - start
             binding.nanoResult.text = sb.toString()
-            binding.nanoTiming.text = "${System.currentTimeMillis() - start} ms"
+            binding.nanoTiming.text = "$wallMs ms"
+            binding.tableNanoWall.text = "$wallMs ms"
             nanoDone = true
-            maybeReenableButton()
+            maybeFinish()
         }
     }
 

@@ -73,5 +73,88 @@
             android:layout_marginTop="4dp"
             android:textSize="16sp" />
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="Measured cost"
+            android:textStyle="bold" />
+
+        <TableLayout
+            android:id="@+id/resultsTable"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:stretchColumns="0,1,2,3">
+
+            <TableRow android:background="#22FFFFFF">
+                <TextView android:padding="6dp" android:textStyle="bold" android:textSize="12sp" android:text="Engine" />
+                <TextView android:padding="6dp" android:textStyle="bold" android:textSize="12sp" android:text="Wall time" />
+                <TextView android:padding="6dp" android:textStyle="bold" android:textSize="12sp" android:text="CPU time" />
+                <TextView android:padding="6dp" android:textStyle="bold" android:textSize="12sp" android:text="Cores used" />
+            </TableRow>
+
+            <TableRow>
+                <TextView android:padding="6dp" android:textSize="12sp" android:text="llama.cpp" />
+                <TextView android:id="@+id/tableLlamaWall" android:padding="6dp" android:textSize="12sp" android:text="—" />
+                <TextView android:id="@+id/tableLlamaCpu" android:padding="6dp" android:textSize="12sp" android:text="—" />
+                <TextView android:id="@+id/tableLlamaCores" android:padding="6dp" android:textSize="12sp" android:text="—" />
+            </TableRow>
+
+            <TableRow android:background="#11FFFFFF">
+                <TextView android:padding="6dp" android:textSize="12sp" android:text="Gemini Nano" />
+                <TextView android:id="@+id/tableNanoWall" android:padding="6dp" android:textSize="12sp" android:text="—" />
+                <TextView android:padding="6dp" android:textSize="12sp" android:text="n/a*" />
+                <TextView android:padding="6dp" android:textSize="12sp" android:text="n/a*" />
+            </TableRow>
+        </TableLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textSize="10sp"
+            android:alpha="0.6"
+            android:text="* Apps can't read another app's CPU stats (Android restricts /proc access to shell). AICore's CPU cost was measured separately via adb shell: ~2.2 CPU-sec vs llama.cpp's ~24.8 CPU-sec for a comparable prompt — Nano offloads to a dedicated accelerator instead of burning CPU cycles." />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Device battery"
+            android:textStyle="bold" />
+
+        <TableLayout
+            android:id="@+id/batteryTable"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:stretchColumns="0,1,2">
+
+            <TableRow android:background="#22FFFFFF">
+                <TextView android:padding="6dp" android:textStyle="bold" android:textSize="12sp" android:text="" />
+                <TextView android:padding="6dp" android:textStyle="bold" android:textSize="12sp" android:text="Before run" />
+                <TextView android:padding="6dp" android:textStyle="bold" android:textSize="12sp" android:text="After run" />
+            </TableRow>
+            <TableRow>
+                <TextView android:padding="6dp" android:textSize="12sp" android:text="Battery %" />
+                <TextView android:id="@+id/batteryPctBefore" android:padding="6dp" android:textSize="12sp" android:text="—" />
+                <TextView android:id="@+id/batteryPctAfter" android:padding="6dp" android:textSize="12sp" android:text="—" />
+            </TableRow>
+            <TableRow android:background="#11FFFFFF">
+                <TextView android:padding="6dp" android:textSize="12sp" android:text="Charge counter" />
+                <TextView android:id="@+id/chargeCounterBefore" android:padding="6dp" android:textSize="12sp" android:text="—" />
+                <TextView android:id="@+id/chargeCounterAfter" android:padding="6dp" android:textSize="12sp" android:text="—" />
+            </TableRow>
+        </TableLayout>
+
+        <TextView
+            android:id="@+id/batteryNote"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textSize="10sp"
+            android:alpha="0.6" />
+
     </LinearLayout>
 </ScrollView>

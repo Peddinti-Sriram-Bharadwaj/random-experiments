@@ -12,8 +12,9 @@
 struct BackendGuard {
     BackendGuard() {
         // Cooperative-matrix / integer-dot-product Vulkan extensions are a known source of
-        // silently-wrong compute results on mobile Mali/Adreno drivers (upstream llama.cpp
-        // issues report exactly our symptom: quantized-model garbage output on Android GPUs).
+        // silently-wrong compute results on mobile GPU drivers (Mali, Adreno, and — what this
+        // device actually has, Tensor G5's Imagination PowerVR DXT-48-1536 — all have upstream
+        // llama.cpp reports of this exact symptom: quantized-model garbage output on GPU).
         // Disable them and see if the encoder/decoder math becomes correct on GPU.
         setenv("GGML_VK_DISABLE_COOPMAT", "1", 1);
         setenv("GGML_VK_DISABLE_COOPMAT2", "1", 1);
