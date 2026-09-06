@@ -1,5 +1,6 @@
 package com.example.nanoassistant.rag.store
 
+import com.example.nanoassistant.rag.model.ChunkMetadata
 import com.example.nanoassistant.rag.model.RetrievedChunk
 import kotlin.math.ln
 
@@ -15,10 +16,12 @@ class Bm25KeywordIndex(private val k1: Double = 1.5, private val b: Double = 0.7
 
     private val documents = mutableListOf<List<String>>()
     private val rawText = mutableListOf<String>()
+    private val metadata = mutableListOf<ChunkMetadata>()
 
-    override fun insert(text: String) {
+    override fun insert(text: String, metadata: ChunkMetadata) {
         rawText += text
         documents += tokenize(text)
+        this.metadata += metadata
     }
 
     override fun search(query: String, topK: Int): List<RetrievedChunk> {
@@ -33,7 +36,7 @@ class Bm25KeywordIndex(private val k1: Double = 1.5, private val b: Double = 0.7
         }
 
         return documents.indices
-            .map { i -> RetrievedChunk(rawText[i], bm25Score(documents[i], queryTerms, docFrequency, docCount, avgDocLength)) }
+            .map { i -> RetrievedChunk(rawText[i], bm25Score(documents[i], queryTerms, docFrequency, docCount, avgDocLength), metadata[i]) }
             .filter { it.score > 0f }
             .sortedByDescending { it.score }
             .take(topK)

@@ -58,7 +58,7 @@ class RagActivity : AppCompatActivity() {
                 var chunkCount = 0
                 for (name in docNames) {
                     val text = assets.open("rag_docs/$name").bufferedReader().use { it.readText() }
-                    pipeline.indexDocument(text) { indexed ->
+                    pipeline.indexDocument(text, sourceId = name) { indexed ->
                         chunkCount = indexed
                         binding.indexStatus.text = "Indexing… $name ($chunkCount chunks so far)"
                     }

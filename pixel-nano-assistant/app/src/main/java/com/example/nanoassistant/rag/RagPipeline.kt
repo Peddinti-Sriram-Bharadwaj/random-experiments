@@ -25,8 +25,8 @@ class RagPipeline(
     private val documentIndexer: DocumentIndexer,
     private val answerGenerator: AnswerGenerator
 ) {
-    suspend fun indexDocument(text: String, onChunkIndexed: (Int) -> Unit = {}) {
-        documentIndexer.index(text, onChunkIndexed)
+    suspend fun indexDocument(text: String, sourceId: String, onChunkIndexed: (Int) -> Unit = {}) {
+        documentIndexer.index(text, sourceId, onChunkIndexed)
     }
 
     suspend fun ask(query: String, topK: Int = 3): AskResult {
