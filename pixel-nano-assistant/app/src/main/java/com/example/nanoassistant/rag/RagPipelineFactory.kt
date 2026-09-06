@@ -1,5 +1,6 @@
 package com.example.nanoassistant.rag
 
+import android.content.Context
 import com.example.nanoassistant.rag.chunking.SemanticTextChunker
 import com.example.nanoassistant.rag.chunking.SlidingWindowTextChunker
 import com.example.nanoassistant.rag.chunking.TextChunker
@@ -15,8 +16,9 @@ import com.example.nanoassistant.rag.pipeline.NanoAnswerGenerator
 import com.example.nanoassistant.rag.pipeline.NanoQueryRewriter
 import com.example.nanoassistant.rag.pipeline.S2AContextRefiner
 import com.example.nanoassistant.rag.store.Bm25KeywordIndex
-import com.example.nanoassistant.rag.store.InMemoryVectorRepository
+import com.example.nanoassistant.rag.store.SqliteVectorRepository
 import com.google.mlkit.genai.prompt.Generation
+import java.io.File
 
 /**
  * Builds a [RagPipeline] wired with this app's default stage implementations: Gecko embeddings +
@@ -30,13 +32,17 @@ object RagPipelineFactory {
     enum class ChunkingStrategy { SLIDING_WINDOW, SEMANTIC }
 
     fun create(
+        context: Context,
         geckoModelPath: String,
         geckoTokenizerPath: String,
         chunkingStrategy: ChunkingStrategy = ChunkingStrategy.SLIDING_WINDOW
     ): RagPipeline {
         val embeddingService = GeckoEmbeddingService(geckoModelPath, geckoTokenizerPath)
         val chunker = chunkerFor(chunkingStrategy, embeddingService)
-        val vectorRepository = InMemoryVectorRepository()
+        // Bundled docs are re-indexed from scratch on every launch (nothing incremental yet),
+        // so start from a clean database each time rather than accumulating duplicate chunks.
+        File(context.filesDir, "vectors.db").delete()
+        val vectorRepository = SqliteVectorRepository(context)
         val keywordIndex = Bm25KeywordIndex()
         val nanoModel = Generation.getClient()
 

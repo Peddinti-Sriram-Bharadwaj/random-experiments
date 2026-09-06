@@ -53,7 +53,7 @@ class RagActivity : AppCompatActivity() {
                 )
 
                 binding.indexStatus.text = "Loading embedder…"
-                pipeline = RagPipelineFactory.create(geckoModel.absolutePath, tokenizer.absolutePath)
+                pipeline = RagPipelineFactory.create(this@RagActivity, geckoModel.absolutePath, tokenizer.absolutePath)
 
                 val docNames = assets.list("rag_docs")?.toList().orEmpty()
                 var totalChunks = 0
