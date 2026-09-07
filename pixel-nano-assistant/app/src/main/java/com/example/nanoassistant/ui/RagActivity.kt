@@ -53,27 +53,33 @@ class RagActivity : AppCompatActivity() {
                 )
 
                 binding.indexStatus.text = "Loading embedder…"
-                pipeline = RagPipelineFactory.create(this@RagActivity, geckoModel.absolutePath, tokenizer.absolutePath)
+                val (createdPipeline, alreadyIndexed) =
+                    RagPipelineFactory.create(this@RagActivity, geckoModel.absolutePath, tokenizer.absolutePath)
+                pipeline = createdPipeline
 
-                val docNames = assets.list("rag_docs")?.toList().orEmpty()
-                var totalChunks = 0
-                for (name in docNames) {
-                    binding.indexStatus.text = "Extracting… $name"
-                    val text = withContext(Dispatchers.Default) {
-                        if (name.endsWith(".pdf", ignoreCase = true)) {
-                            assets.open("rag_docs/$name").use { PdfTextExtractor.extractText(this@RagActivity, it) }
-                        } else {
-                            assets.open("rag_docs/$name").bufferedReader().use { it.readText() }
+                if (alreadyIndexed) {
+                    binding.indexStatus.text = "Loaded persisted index from a previous launch."
+                } else {
+                    val docNames = assets.list("rag_docs")?.toList().orEmpty()
+                    var totalChunks = 0
+                    for (name in docNames) {
+                        binding.indexStatus.text = "Extracting… $name"
+                        val text = withContext(Dispatchers.Default) {
+                            if (name.endsWith(".pdf", ignoreCase = true)) {
+                                assets.open("rag_docs/$name").use { PdfTextExtractor.extractText(this@RagActivity, it) }
+                            } else {
+                                assets.open("rag_docs/$name").bufferedReader().use { it.readText() }
+                            }
                         }
+                        var docChunks = 0
+                        pipeline.indexDocument(text, sourceId = name) { indexed ->
+                            docChunks = indexed
+                            binding.indexStatus.text = "Indexing… $name (${totalChunks + docChunks} chunks so far)"
+                        }
+                        totalChunks += docChunks
                     }
-                    var docChunks = 0
-                    pipeline.indexDocument(text, sourceId = name) { indexed ->
-                        docChunks = indexed
-                        binding.indexStatus.text = "Indexing… $name (${totalChunks + docChunks} chunks so far)"
-                    }
-                    totalChunks += docChunks
+                    binding.indexStatus.text = "Indexed $totalChunks chunks from ${docNames.size} bundled doc(s)."
                 }
-                binding.indexStatus.text = "Indexed $totalChunks chunks from ${docNames.size} bundled doc(s)."
                 binding.askButton.isEnabled = true
             } catch (e: Exception) {
                 binding.indexStatus.text = "Setup failed: ${e.message} — tap RAG button again to retry."
