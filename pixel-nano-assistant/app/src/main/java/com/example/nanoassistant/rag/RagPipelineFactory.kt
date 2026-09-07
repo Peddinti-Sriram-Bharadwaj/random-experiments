@@ -2,11 +2,12 @@ package com.example.nanoassistant.rag
 
 import android.content.Context
 import com.example.nanoassistant.rag.chunking.SlidingWindowTextChunker
+import com.example.nanoassistant.rag.embedding.CachingEmbeddingService
 import com.example.nanoassistant.rag.embedding.GeckoEmbeddingService
 import com.example.nanoassistant.rag.pipeline.ChunkingDocumentIndexer
 import com.example.nanoassistant.rag.pipeline.CompositeRetriever
 import com.example.nanoassistant.rag.pipeline.ConcatenatingContextRefiner
-import com.example.nanoassistant.rag.pipeline.EmbeddingRetriever
+import com.example.nanoassistant.rag.pipeline.HydeRetriever
 import com.example.nanoassistant.rag.pipeline.KeywordRetriever
 import com.example.nanoassistant.rag.pipeline.LexicalOverlapReranker
 import com.example.nanoassistant.rag.pipeline.NanoAnswerGenerator
@@ -40,7 +41,7 @@ object RagPipelineFactory {
         geckoModelPath: String,
         geckoTokenizerPath: String
     ): Result {
-        val embeddingService = GeckoEmbeddingService(geckoModelPath, geckoTokenizerPath)
+        val embeddingService = CachingEmbeddingService(GeckoEmbeddingService(geckoModelPath, geckoTokenizerPath))
         val chunker = SlidingWindowTextChunker()
         val chunkStore = PersistedChunkStore(context)
         val alreadyIndexed = chunkStore.exists()
@@ -66,7 +67,7 @@ object RagPipelineFactory {
 
         val retriever = CompositeRetriever(
             listOf(
-                EmbeddingRetriever(embeddingService, vectorRepository),
+                HydeRetriever(nanoModel, embeddingService, vectorRepository),
                 KeywordRetriever(baseKeywordIndex)
             )
         )

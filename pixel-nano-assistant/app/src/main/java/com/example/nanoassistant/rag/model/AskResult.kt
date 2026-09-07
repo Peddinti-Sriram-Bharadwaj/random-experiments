@@ -7,5 +7,6 @@ data class AskResult(
     val retrievedChunks: List<RetrievedChunk>,
     val rerankedChunks: List<RetrievedChunk>,
     val refinedContext: String,
-    val answer: String
+    val answer: String,
+    val isLowConfidence: Boolean = false
 )
