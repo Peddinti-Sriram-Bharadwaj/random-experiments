@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- No INTERNET permission: AICore manages Gemini Nano's model delivery itself, not this
+         app — unlike pixel-nano-assistant, there's no embedder model for us to download. -->
+
+    <!-- Android 11+ package-visibility filtering hides other apps' launcher activities from
+         PackageManager.queryIntentActivities by default — without this, ActionDispatcher's
+         OPEN_APP handler sees an empty list no matter what's actually installed. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:label="Nano Agent"
+        android:theme="@style/Theme.Material3.DayNight">
+
+        <activity
+            android:name=".ui.AgentActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
