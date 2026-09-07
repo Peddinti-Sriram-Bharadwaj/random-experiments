@@ -139,6 +139,10 @@ class RagActivity : AppCompatActivity() {
             val result = pipeline.ask(query, topK = 3)
 
             binding.rewrittenQueryText.text = result.rewrittenQuery
+            if (result.blockedByInjectionGuard > 0) {
+                binding.rewrittenQueryText.text = "${result.rewrittenQuery}  ⚠ ${result.blockedByInjectionGuard} " +
+                    "retrieved chunk(s) blocked by prompt-injection guard"
+            }
             binding.retrievedChunks.text = if (result.rerankedChunks.isEmpty()) {
                 "(nothing retrieved)"
             } else {

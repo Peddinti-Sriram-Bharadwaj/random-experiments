@@ -8,5 +8,6 @@ data class AskResult(
     val rerankedChunks: List<RetrievedChunk>,
     val refinedContext: String,
     val answer: String,
-    val isLowConfidence: Boolean = false
+    val isLowConfidence: Boolean = false,
+    val blockedByInjectionGuard: Int = 0
 )

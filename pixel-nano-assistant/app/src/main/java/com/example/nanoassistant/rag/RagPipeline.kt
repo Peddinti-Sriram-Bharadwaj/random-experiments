@@ -7,6 +7,7 @@ import com.example.nanoassistant.rag.pipeline.DocumentIndexer
 import com.example.nanoassistant.rag.pipeline.QueryRewriter
 import com.example.nanoassistant.rag.pipeline.Reranker
 import com.example.nanoassistant.rag.pipeline.Retriever
+import com.example.nanoassistant.rag.security.PromptInjectionGuard
 
 /**
  * Facade over the six-stage RAG flow: rewrite -> retrieve -> rerank -> refine -> generate,
@@ -35,13 +36,21 @@ class RagPipeline(
         val retrieved = retriever.retrieve(rewrittenQuery, topK)
         val reranked = reranker.rerank(rewrittenQuery, retrieved)
 
-        // Confidence gate: if even the best-ranked chunk barely matches the query, skip the
-        // context-refine + generate calls entirely (saves two Nano round trips on a device where
-        // that matters) rather than risk Nano confidently answering off of noise.
-        val topScore = reranked.firstOrNull()?.score ?: 0f
+        // Prompt-injection defense: a chunk can come from *any* indexed document, including ones
+        // an attacker planted, so it's untrusted input the moment it's about to flow into a
+        // generation prompt — drop chunks matching known instruction-hijacking idioms before they
+        // ever reach the context refiner or answer generator. Deliberately runs before the
+        // confidence gate too, so a malicious chunk can't win the gate on a high lexical-overlap
+        // score just because it echoes the query terms back convincingly.
+        val (guarded, flaggedCount) = PromptInjectionGuard.scan(reranked)
+
+        // Confidence gate: if even the best-ranked (post-guard) chunk barely matches the query,
+        // skip the context-refine + generate calls entirely (saves two Nano round trips on a
+        // device where that matters) rather than risk Nano confidently answering off of noise.
+        val topScore = guarded.firstOrNull()?.score ?: 0f
         val lowConfidence = topScore < minConfidenceScore
 
-        val context = if (lowConfidence) "" else contextRefiner.refine(rewrittenQuery, reranked)
+        val context = if (lowConfidence) "" else contextRefiner.refine(rewrittenQuery, guarded)
         val answer = if (lowConfidence || context.isBlank()) {
             LOW_CONFIDENCE_ANSWER
         } else {
@@ -52,10 +61,11 @@ class RagPipeline(
             originalQuery = query,
             rewrittenQuery = rewrittenQuery,
             retrievedChunks = retrieved,
-            rerankedChunks = reranked,
+            rerankedChunks = guarded,
             refinedContext = context,
             answer = answer,
-            isLowConfidence = lowConfidence || context.isBlank()
+            isLowConfidence = lowConfidence || context.isBlank(),
+            blockedByInjectionGuard = flaggedCount
         )
     }
 
