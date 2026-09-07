@@ -1,10 +1,7 @@
 package com.example.nanoassistant.rag
 
 import android.content.Context
-import com.example.nanoassistant.rag.chunking.SemanticTextChunker
 import com.example.nanoassistant.rag.chunking.SlidingWindowTextChunker
-import com.example.nanoassistant.rag.chunking.TextChunker
-import com.example.nanoassistant.rag.embedding.EmbeddingService
 import com.example.nanoassistant.rag.embedding.GeckoEmbeddingService
 import com.example.nanoassistant.rag.pipeline.ChunkingDocumentIndexer
 import com.example.nanoassistant.rag.pipeline.CompositeRetriever
@@ -29,16 +26,13 @@ import java.io.File
  */
 object RagPipelineFactory {
 
-    enum class ChunkingStrategy { SLIDING_WINDOW, SEMANTIC }
-
     fun create(
         context: Context,
         geckoModelPath: String,
-        geckoTokenizerPath: String,
-        chunkingStrategy: ChunkingStrategy = ChunkingStrategy.SLIDING_WINDOW
+        geckoTokenizerPath: String
     ): RagPipeline {
         val embeddingService = GeckoEmbeddingService(geckoModelPath, geckoTokenizerPath)
-        val chunker = chunkerFor(chunkingStrategy, embeddingService)
+        val chunker = SlidingWindowTextChunker()
         // Bundled docs are re-indexed from scratch on every launch (nothing incremental yet),
         // so start from a clean database each time rather than accumulating duplicate chunks.
         File(context.filesDir, "vectors.db").delete()
@@ -62,10 +56,4 @@ object RagPipelineFactory {
             answerGenerator = NanoAnswerGenerator(nanoModel)
         )
     }
-
-    private fun chunkerFor(strategy: ChunkingStrategy, embeddingService: EmbeddingService): TextChunker =
-        when (strategy) {
-            ChunkingStrategy.SLIDING_WINDOW -> SlidingWindowTextChunker()
-            ChunkingStrategy.SEMANTIC -> SemanticTextChunker(embeddingService)
-        }
 }
