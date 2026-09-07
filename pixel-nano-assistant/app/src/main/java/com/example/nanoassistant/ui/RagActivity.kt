@@ -1,6 +1,9 @@
 package com.example.nanoassistant.ui
 
+import android.graphics.Typeface
 import android.os.Bundle
+import android.view.View
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -8,6 +11,8 @@ import androidx.lifecycle.lifecycleScope
 import com.example.nanoassistant.databinding.ActivityRagBinding
 import com.example.nanoassistant.rag.RagPipeline
 import com.example.nanoassistant.rag.RagPipelineFactory
+import com.example.nanoassistant.rag.ingest.PdfTextExtractor
+import com.example.nanoassistant.rag.model.RetrievedChunk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,18 +57,33 @@ class RagActivity : AppCompatActivity() {
                 )
 
                 binding.indexStatus.text = "Loading embedder…"
-                pipeline = RagPipelineFactory.create(geckoModel.absolutePath, tokenizer.absolutePath)
+                val (createdPipeline, alreadyIndexed) =
+                    RagPipelineFactory.create(this@RagActivity, geckoModel.absolutePath, tokenizer.absolutePath)
+                pipeline = createdPipeline
 
-                val docNames = assets.list("rag_docs")?.toList().orEmpty()
-                var chunkCount = 0
-                for (name in docNames) {
-                    val text = assets.open("rag_docs/$name").bufferedReader().use { it.readText() }
-                    pipeline.indexDocument(text) { indexed ->
-                        chunkCount = indexed
-                        binding.indexStatus.text = "Indexing… $name ($chunkCount chunks so far)"
+                if (alreadyIndexed) {
+                    binding.indexStatus.text = "Loaded persisted index from a previous launch."
+                } else {
+                    val docNames = assets.list("rag_docs")?.toList().orEmpty()
+                    var totalChunks = 0
+                    for (name in docNames) {
+                        binding.indexStatus.text = "Extracting… $name"
+                        val text = withContext(Dispatchers.Default) {
+                            if (name.endsWith(".pdf", ignoreCase = true)) {
+                                assets.open("rag_docs/$name").use { PdfTextExtractor.extractText(this@RagActivity, it) }
+                            } else {
+                                assets.open("rag_docs/$name").bufferedReader().use { it.readText() }
+                            }
+                        }
+                        var docChunks = 0
+                        pipeline.indexDocument(text, sourceId = name) { indexed ->
+                            docChunks = indexed
+                            binding.indexStatus.text = "Indexing… $name (${totalChunks + docChunks} chunks so far)"
+                        }
+                        totalChunks += docChunks
                     }
+                    binding.indexStatus.text = "Indexed $totalChunks chunks from ${docNames.size} bundled doc(s)."
                 }
-                binding.indexStatus.text = "Indexed $chunkCount chunks from ${docNames.size} bundled doc(s)."
                 binding.askButton.isEnabled = true
             } catch (e: Exception) {
                 binding.indexStatus.text = "Setup failed: ${e.message} — tap RAG button again to retry."
@@ -112,6 +132,8 @@ class RagActivity : AppCompatActivity() {
         binding.retrievedChunks.text = "Retrieving…"
         binding.refinedContextText.text = "Filtering (System 2 Attention)…"
         binding.answerText.text = "Thinking…"
+        binding.answerText.setTypeface(null, Typeface.NORMAL)
+        binding.sourcesContainer.removeAllViews()
 
         lifecycleScope.launch {
             val result = pipeline.ask(query, topK = 3)
@@ -125,7 +147,47 @@ class RagActivity : AppCompatActivity() {
             }
             binding.refinedContextText.text = result.refinedContext.ifBlank { "(empty)" }
             binding.answerText.text = result.answer
+            binding.answerText.setTypeface(null, if (result.isLowConfidence) Typeface.ITALIC else Typeface.NORMAL)
+
+            binding.sourcesContainer.removeAllViews()
+            if (!result.isLowConfidence) {
+                result.rerankedChunks.forEach { addSourceView(it) }
+            }
+
             binding.askButton.isEnabled = true
         }
+    }
+
+    /** One collapsed citation line per retrieved chunk; tapping it toggles the full chunk text
+     *  in a detail line right below — cheap tap-to-expand without a RecyclerView for what's at
+     *  most a handful of sources per answer. */
+    private fun addSourceView(chunk: RetrievedChunk) {
+        val metadata = chunk.metadata
+        val label = if (metadata != null) {
+            "[${metadata.sourceId} #${metadata.chunkIndex}] (%.2f)".format(chunk.score)
+        } else {
+            "[unknown source] (%.2f)".format(chunk.score)
+        }
+
+        val summary = TextView(this).apply {
+            text = "▸ $label"
+            textSize = 12f
+            alpha = 0.8f
+            setPadding(0, 8, 0, 0)
+        }
+        val detail = TextView(this).apply {
+            text = chunk.text
+            textSize = 12f
+            alpha = 0.8f
+            setPadding(24, 4, 0, 0)
+            visibility = View.GONE
+        }
+        summary.setOnClickListener {
+            val expanded = detail.visibility == View.VISIBLE
+            detail.visibility = if (expanded) View.GONE else View.VISIBLE
+            summary.text = if (expanded) "▸ $label" else "▾ $label"
+        }
+        binding.sourcesContainer.addView(summary)
+        binding.sourcesContainer.addView(detail)
     }
 }

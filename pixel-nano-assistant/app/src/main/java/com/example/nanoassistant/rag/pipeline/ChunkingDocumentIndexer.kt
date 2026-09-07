@@ -2,6 +2,7 @@ package com.example.nanoassistant.rag.pipeline
 
 import com.example.nanoassistant.rag.chunking.TextChunker
 import com.example.nanoassistant.rag.embedding.EmbeddingService
+import com.example.nanoassistant.rag.model.ChunkMetadata
 import com.example.nanoassistant.rag.store.KeywordIndex
 import com.example.nanoassistant.rag.store.VectorRepository
 
@@ -15,12 +16,13 @@ class ChunkingDocumentIndexer(
     private val keywordIndex: KeywordIndex
 ) : DocumentIndexer {
 
-    override suspend fun index(text: String, onChunkIndexed: (Int) -> Unit) {
+    override suspend fun index(text: String, sourceId: String, onChunkIndexed: (Int) -> Unit) {
         val chunks = chunker.chunk(text)
         chunks.forEachIndexed { index, chunk ->
+            val metadata = ChunkMetadata(sourceId = sourceId, chunkIndex = index)
             val embedding = embeddingService.embedDocument(chunk)
-            vectorRepository.insert(chunk, embedding)
-            keywordIndex.insert(chunk)
+            vectorRepository.insert(chunk, embedding, metadata)
+            keywordIndex.insert(chunk, metadata)
             onChunkIndexed(index + 1)
         }
     }

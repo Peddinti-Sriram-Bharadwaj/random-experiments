@@ -22,15 +22,19 @@ class CompositeRetriever(
         val rankedLists = retrievers.map { it.retrieve(query, pool) }
 
         val fusedScores = LinkedHashMap<String, Float>()
+        val chunkByText = LinkedHashMap<String, RetrievedChunk>()
         for (list in rankedLists) {
             list.forEachIndexed { rank, chunk ->
                 fusedScores[chunk.text] = (fusedScores[chunk.text] ?: 0f) + 1f / (rrfK + rank + 1)
+                // First list to surface a chunk wins its metadata — every list should agree on it
+                // anyway since it's keyed by chunk text, not list-specific.
+                chunkByText.putIfAbsent(chunk.text, chunk)
             }
         }
 
         return fusedScores.entries
             .sortedByDescending { it.value }
             .take(topK)
-            .map { (text, score) -> RetrievedChunk(text, score) }
+            .map { (text, score) -> chunkByText.getValue(text).copy(score = score) }
     }
 }

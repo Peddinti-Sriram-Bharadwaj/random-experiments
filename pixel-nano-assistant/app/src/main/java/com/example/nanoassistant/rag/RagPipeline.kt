@@ -23,18 +23,30 @@ class RagPipeline(
     private val reranker: Reranker,
     private val contextRefiner: ContextRefiner,
     private val documentIndexer: DocumentIndexer,
-    private val answerGenerator: AnswerGenerator
+    private val answerGenerator: AnswerGenerator,
+    private val minConfidenceScore: Float = 0.05f
 ) {
-    suspend fun indexDocument(text: String, onChunkIndexed: (Int) -> Unit = {}) {
-        documentIndexer.index(text, onChunkIndexed)
+    suspend fun indexDocument(text: String, sourceId: String, onChunkIndexed: (Int) -> Unit = {}) {
+        documentIndexer.index(text, sourceId, onChunkIndexed)
     }
 
     suspend fun ask(query: String, topK: Int = 3): AskResult {
         val rewrittenQuery = queryRewriter.rewrite(query)
         val retrieved = retriever.retrieve(rewrittenQuery, topK)
         val reranked = reranker.rerank(rewrittenQuery, retrieved)
-        val context = contextRefiner.refine(rewrittenQuery, reranked)
-        val answer = answerGenerator.generate(rewrittenQuery, context)
+
+        // Confidence gate: if even the best-ranked chunk barely matches the query, skip the
+        // context-refine + generate calls entirely (saves two Nano round trips on a device where
+        // that matters) rather than risk Nano confidently answering off of noise.
+        val topScore = reranked.firstOrNull()?.score ?: 0f
+        val lowConfidence = topScore < minConfidenceScore
+
+        val context = if (lowConfidence) "" else contextRefiner.refine(rewrittenQuery, reranked)
+        val answer = if (lowConfidence || context.isBlank()) {
+            LOW_CONFIDENCE_ANSWER
+        } else {
+            answerGenerator.generate(rewrittenQuery, context)
+        }
 
         return AskResult(
             originalQuery = query,
@@ -42,7 +54,13 @@ class RagPipeline(
             retrievedChunks = retrieved,
             rerankedChunks = reranked,
             refinedContext = context,
-            answer = answer
+            answer = answer,
+            isLowConfidence = lowConfidence || context.isBlank()
         )
+    }
+
+    private companion object {
+        const val LOW_CONFIDENCE_ANSWER =
+            "I couldn't find anything in your documents that looks relevant to that question."
     }
 }

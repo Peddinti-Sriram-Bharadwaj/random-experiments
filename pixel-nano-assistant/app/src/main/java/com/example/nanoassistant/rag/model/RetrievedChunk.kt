@@ -1,3 +1,3 @@
 package com.example.nanoassistant.rag.model
 
-data class RetrievedChunk(val text: String, val score: Float)
+data class RetrievedChunk(val text: String, val score: Float, val metadata: ChunkMetadata? = null)
