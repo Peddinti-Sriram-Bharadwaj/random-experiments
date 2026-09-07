@@ -8,6 +8,8 @@ import androidx.lifecycle.lifecycleScope
 import com.example.nanoassistant.databinding.ActivityRagBinding
 import com.example.nanoassistant.rag.RagPipeline
 import com.example.nanoassistant.rag.RagPipelineFactory
+import com.example.nanoassistant.rag.comparison.ChunkingComparisonRunner
+import com.example.nanoassistant.rag.embedding.GeckoEmbeddingService
 import com.example.nanoassistant.rag.ingest.PdfTextExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -19,6 +21,15 @@ class RagActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityRagBinding
     private lateinit var pipeline: RagPipeline
+    private lateinit var geckoModelPath: String
+    private lateinit var geckoTokenizerPath: String
+    private val docTexts = mutableMapOf<String, String>()
+
+    private val comparisonQueries = listOf(
+        "What is BM25?",
+        "What GPU vendor issue was encountered?",
+        "What is the Pixel 10?"
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,8 +63,11 @@ class RagActivity : AppCompatActivity() {
                     "https://huggingface.co/litert-community/Gecko-110m-en/resolve/main/sentencepiece.model"
                 )
 
+                geckoModelPath = geckoModel.absolutePath
+                geckoTokenizerPath = tokenizer.absolutePath
+
                 binding.indexStatus.text = "Loading embedder…"
-                pipeline = RagPipelineFactory.create(this@RagActivity, geckoModel.absolutePath, tokenizer.absolutePath)
+                pipeline = RagPipelineFactory.create(this@RagActivity, geckoModelPath, geckoTokenizerPath)
 
                 val docNames = assets.list("rag_docs")?.toList().orEmpty()
                 var totalChunks = 0
@@ -66,6 +80,7 @@ class RagActivity : AppCompatActivity() {
                             assets.open("rag_docs/$name").bufferedReader().use { it.readText() }
                         }
                     }
+                    docTexts[name] = text
                     var docChunks = 0
                     pipeline.indexDocument(text, sourceId = name) { indexed ->
                         docChunks = indexed
@@ -75,6 +90,7 @@ class RagActivity : AppCompatActivity() {
                 }
                 binding.indexStatus.text = "Indexed $totalChunks chunks from ${docNames.size} bundled doc(s)."
                 binding.askButton.isEnabled = true
+                binding.compareButton.isEnabled = true
             } catch (e: Exception) {
                 binding.indexStatus.text = "Setup failed: ${e.message} — tap RAG button again to retry."
             }
@@ -85,7 +101,49 @@ class RagActivity : AppCompatActivity() {
             if (query.isBlank()) return@setOnClickListener
             askQuestion(query)
         }
+
+        binding.compareButton.setOnClickListener { runChunkingComparison() }
     }
+
+    private fun runChunkingComparison() {
+        binding.compareButton.isEnabled = false
+        binding.comparisonText.text = "Indexing corpus twice (sliding-window + semantic)…"
+
+        lifecycleScope.launch {
+            try {
+                // A separate embedder instance so this diagnostic run doesn't touch the vector/
+                // keyword stores backing the live pipeline above.
+                val comparisonEmbeddingService = GeckoEmbeddingService(geckoModelPath, geckoTokenizerPath)
+                val runner = ChunkingComparisonRunner(comparisonEmbeddingService)
+                // Semantic chunking embeds every sentence at index time — over the full corpus
+                // (224 chunks, including two multi-page PDFs) that's prohibitively slow for an
+                // on-device diagnostic. The small text docs alone still clearly show the
+                // difference between strategies.
+                val comparisonDocs = docTexts.filterKeys { !it.endsWith(".pdf", ignoreCase = true) }
+                val results = runner.compare(comparisonDocs, comparisonQueries, topK = 3)
+
+                binding.comparisonText.text = results.joinToString("\n\n" + "=".repeat(40) + "\n\n") { result ->
+                    buildString {
+                        append("Query: ${result.query}\n")
+                        append("(sliding-window: ${result.slidingWindow.chunkCount} chunks, ")
+                        append("semantic: ${result.semantic.chunkCount} chunks)\n\n")
+                        append("-- Sliding window --\n")
+                        append(formatChunks(result.slidingWindow.topChunks))
+                        append("\n\n-- Semantic --\n")
+                        append(formatChunks(result.semantic.topChunks))
+                    }
+                }
+            } catch (e: Exception) {
+                binding.comparisonText.text = "Comparison failed: ${e.message}"
+            } finally {
+                binding.compareButton.isEnabled = true
+            }
+        }
+    }
+
+    private fun formatChunks(chunks: List<com.example.nanoassistant.rag.model.RetrievedChunk>): String =
+        if (chunks.isEmpty()) "(nothing retrieved)"
+        else chunks.mapIndexed { i, c -> "[$i] (%.2f) %s".format(c.score, c.text.take(200)) }.joinToString("\n\n")
 
     private suspend fun downloadIfNeeded(dir: File, filename: String, url: String): File =
         withContext(Dispatchers.IO) {

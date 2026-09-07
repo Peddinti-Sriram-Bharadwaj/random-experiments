@@ -13,7 +13,11 @@ import kotlin.math.sqrt
 class SemanticTextChunker(
     private val embeddingService: EmbeddingService,
     private val breakpointThreshold: Double = 0.5,
-    private val maxChunkChars: Int = 1500
+    // Merged chunks get embedded again afterward (by ChunkingDocumentIndexer, once per final
+    // chunk) — that call has the same 256-token embedder limit as the per-sentence calls below,
+    // and 1500 chars was far past it for this corpus's denser PDF text. 400 is comfortably under
+    // the 500-char window SlidingWindowTextChunker already uses safely on the same corpus.
+    private val maxChunkChars: Int = 400
 ) : TextChunker {
 
     override suspend fun chunk(text: String): List<String> {
@@ -40,11 +44,20 @@ class SemanticTextChunker(
         return chunks
     }
 
+    // The embedder has a fixed max input length (256 tokens for Gecko); a punctuation-free
+    // stretch of text (a PDF table-of-contents block, a run of metadata labels with no
+    // sentence-ending punctuation) can produce a "sentence" from the regex split below that
+    // blows past that limit and crashes the native embedding call. A 700-char cap still hit
+    // 346 tokens once (~2 chars/token — dense numeric/symbol-heavy PDF fragments tokenize much
+    // less efficiently than prose), so this is deliberately far under any plausible ratio.
+    private val maxSentenceChars = 300
+
     private fun splitIntoSentences(text: String): List<String> =
         text.trim()
             .split(Regex("(?<=[.!?])\\s+"))
             .map { it.trim() }
             .filter { it.isNotEmpty() }
+            .flatMap { sentence -> sentence.chunked(maxSentenceChars) }
 
     private fun cosineSimilarity(a: List<Float>, b: List<Float>): Double {
         var dot = 0.0; var normA = 0.0; var normB = 0.0

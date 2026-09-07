@@ -98,5 +98,22 @@
             android:layout_marginTop="4dp"
             android:textSize="16sp" />
 
+        <Button
+            android:id="@+id/compareButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="Compare Chunking Strategies"
+            android:enabled="false" />
+
+        <TextView
+            android:id="@+id/comparisonText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="12sp"
+            android:alpha="0.8"
+            android:fontFamily="monospace" />
+
     </LinearLayout>
 </ScrollView>
